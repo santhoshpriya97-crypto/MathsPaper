@@ -1,5 +1,4 @@
-import re
-import time
+import re, time, networkx as nx
 
 def closed_neighborhood_bit(adj, v):
     mask = 1 << v
@@ -72,7 +71,7 @@ def output_results(adj, graph_label="G"):
     elapsed = end_time - start_time
     print(f"Running time for {graph_label}: {elapsed:.6f} seconds")
     if gamma == 0:
-        print(f"γ_ε({graph_label}) = 0")
+        print(f"γ_ε({graph_label}) does not exist")
         return
     n = len(adj)
     def label(i):
@@ -88,31 +87,26 @@ def output_results(adj, graph_label="G"):
 def graph_from_name(name):
     name = name.strip().upper()
     if name.startswith('P'):
+        G = nx.path_graph(int(name[1:]))
+    elif name.startswith('C'):
+        G = nx.cycle_graph(int(name[1:]))
+    elif name.startswith('K') and ',' not in name:
+        G = nx.complete_graph(int(name[1:]))
+    elif name.startswith('S'):
         n = int(name[1:])
-        return [[1 if abs(i-j)==1 else 0 for j in range(n)] for i in range(n)]
-    if name.startswith('C'):
-        n = int(name[1:])
-        return [[1 if abs(i-j)==1 or (i,j) in [(0,n-1),(n-1,0)] else 0 for j in range(n)] for i in range(n)]
-    if name.startswith('K') and ',' not in name:
-        n = int(name[1:])
-        return [[0 if i==j else 1 for j in range(n)] for i in range(n)]
-    if name.startswith('S'):
-        n = int(name[1:])
-        return [[1 if i==0 and j>0 or j==0 and i>0 else 0 for j in range(n)] for i in range(n)]
-    if name.startswith('W'):
-        n = int(name[1:])
-        mat = [[0]*n for _ in range(n)]
-        for i in range(1,n):
-            mat[0][i]=mat[i][0]=1
-        for i in range(1,n-1):
-            mat[i][i+1]=mat[i+1][i]=1
-        mat[1][n-1]=mat[n-1][1]=1
-        return mat
-    if name.startswith('K') and ',' in name:
-        a,b = map(int, name[1:].split(','))
-        n = a+b
-        return [[1 if (i<a and j>=a) or (i>=a and j<a) else 0 for j in range(n)] for i in range(n)]
-    raise ValueError("Unknown graph name")
+        G = nx.star_graph(n - 1)
+    elif name.startswith('W'):
+        G = nx.wheel_graph(int(name[1:]))
+    elif name.startswith('K') and ',' in name:
+        a, b = map(int, name[1:].split(','))
+        G = nx.complete_bipartite_graph(a, b)
+    else:
+        raise ValueError("Unknown graph name")
+    n = G.number_of_nodes()
+    adj = [[0] * n for _ in range(n)]
+    for u, v in G.edges():
+        adj[u][v] = adj[v][u] = 1
+    return adj
 
 def build_adjacency_matrix(inp):
     if isinstance(inp, list) and all(isinstance(r,list) for r in inp):
@@ -150,4 +144,4 @@ def enclave_domination_from_input(inp):
     output_results(adj, label)
 
 if __name__ == "__main__":
-    enclave_domination_from_input("P16")
+    enclave_domination_from_input("P15")
